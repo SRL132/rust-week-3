@@ -111,7 +111,7 @@ impl NFTokenTrait for NFToken {
     /*
         WRITE FUNCTIONS
     */
-
+    //@audit: same token can be approved multiple times, owner can approve to itself
     fn appr(env: Env, owner: Address, operator: Address, id: i128) {
         owner.require_auth();
         env.storage()
@@ -122,7 +122,7 @@ impl NFTokenTrait for NFToken {
         write_approval(&env, id, Some(operator.clone()));
         event::approve(&env, operator, id);
     }
-
+    //@audit: owner can approve to itself
     fn appr_all(env: Env, owner: Address, operator: Address, approved: bool) {
         owner.require_auth();
         env.storage()
@@ -132,7 +132,7 @@ impl NFTokenTrait for NFToken {
         event::approve_all(&env, operator, owner)
     }
 
-
+    //@audit: approvals are not reset when transferring the NFT
     fn transfer(env: Env, from: Address, to: Address, id: i128) {
         env.storage()
             .instance()
@@ -142,7 +142,7 @@ impl NFTokenTrait for NFToken {
         write_owner(&env, id, Some(to.clone()));
         event::transfer(&env, from, to, id);
     }
-
+    //@audit-issue: The spender can be the owner of the NFT, so the owner can transfer the NFT to himself, someone previously approved can transfer the NFT to himself
     fn transfer_from(env: Env, spender: Address, from: Address, to: Address, id: i128) {
         env.storage()
             .instance()
@@ -151,6 +151,7 @@ impl NFTokenTrait for NFToken {
         spender.require_auth();
 
         if read_approval_all(&env, from.clone(), spender.clone())
+        //spender never loses approval when transferring the NFT
             || spender == read_approval(&env, id)
         {
             write_owner(&env, id, Some(to.clone()));
